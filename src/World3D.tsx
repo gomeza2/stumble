@@ -31,10 +31,10 @@ export default function World3D(){
   const ground=new THREE.Mesh(new THREE.PlaneGeometry(110,110),grass);ground.rotation.x=-Math.PI/2;ground.position.y=-.58;ground.receiveShadow=true;scene.add(ground);
   const groundGrid=new THREE.GridHelper(100,50,'#c3d7d0','#c3d7d0');groundGrid.position.y=-.565;(groundGrid.material as THREE.Material).opacity=.17;(groundGrid.material as THREE.Material).transparent=true;scene.add(groundGrid);
   const course=new THREE.Mesh(new THREE.BoxGeometry(17,.7,58),track);course.position.set(0,-.2,0);course.receiveShadow=true;course.castShadow=true;scene.add(course);
-  const blockers:{x:number;z:number;w:number;d:number;mesh:THREE.Mesh}[]=[];
+  const blockers:{x:number;z:number;w:number;h:number;d:number;mesh:THREE.Mesh}[]=[];
   const box=(x:number,y:number,z:number,w:number,h:number,d:number,material:THREE.Material,collide=false)=>{
    const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);mesh.position.set(x,y,z);mesh.castShadow=true;mesh.receiveShadow=true;scene.add(mesh);
-   if(collide)blockers.push({x,z,w,d,mesh});return mesh;
+   if(collide)blockers.push({x,z,w,h,d,mesh});return mesh;
   };
   const cylinder=(x:number,y:number,z:number,r:number,h:number,material:THREE.Material)=>{
    const mesh=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,20),material);mesh.position.set(x,y,z);mesh.castShadow=true;mesh.receiveShadow=true;scene.add(mesh);return mesh;
@@ -90,7 +90,7 @@ export default function World3D(){
    if(keys.has('left'))dx-=speed*dt;if(keys.has('right'))dx+=speed*dt;if(keys.has('forward'))dz-=speed*dt;if(keys.has('back'))dz+=speed*dt;
    const length=Math.hypot(dx,dz);if(length>0){dx=dx/Math.max(1,length/(speed*dt));dz=dz/Math.max(1,length/(speed*dt))}
    const nx=THREE.MathUtils.clamp(player.position.x+dx,-7.25,7.25),nz=THREE.MathUtils.clamp(player.position.z+dz,-27,27);
-   const collides=(x:number,z:number)=>blockers.some(b=>Math.abs(x-b.x)<b.w/2+.38&&Math.abs(z-b.z)<b.d/2+.32);
+   const collides=(x:number,z:number)=>blockers.some(b=>player.position.y<b.h-.15&&Math.abs(x-b.x)<b.w/2+.38&&Math.abs(z-b.z)<b.d/2+.32);
    if(!collides(nx,player.position.z))player.position.x=nx;
    if(!collides(player.position.x,nz))player.position.z=nz;
    if(keys.has('jump')&&onGround){velocity.y=8.1;onGround=false;keys.delete('jump')}
