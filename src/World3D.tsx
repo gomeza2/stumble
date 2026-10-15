@@ -13,7 +13,7 @@ export default function World3D(){
 
  useEffect(()=>{
   const host=mountRef.current;if(!host)return;
-  let alive=true,frame=0,moveCounter=0,lastMoveAt=0;
+  let alive=true,frame=0,moveCounter=0,lastMoveAt=0,lastBumpAt=0;
   const keys=new Set<Direction>();
   const scene=new THREE.Scene();scene.background=new THREE.Color('#a9c7d9');scene.fog=new THREE.Fog('#a9c7d9',35,95);
   const camera=new THREE.PerspectiveCamera(48,1,.1,160);
@@ -30,7 +30,7 @@ export default function World3D(){
   const grass=mat('#6c8b79'),track=mat('#d5dce3'),trackEdge=mat('#53647c'),wallA=mat('#8b9aaf'),wallB=mat('#65758b'),lime=mat('#b7ff73',.35),pink=mat('#ff6689',.38),blue=mat('#718dff',.4),white=mat('#f8fafc',.5),dark=mat('#263247'),gold=mat('#ffd36a',.38,.2);
   const ground=new THREE.Mesh(new THREE.PlaneGeometry(110,110),grass);ground.rotation.x=-Math.PI/2;ground.position.y=-.58;ground.receiveShadow=true;scene.add(ground);
   const groundGrid=new THREE.GridHelper(100,50,'#c3d7d0','#c3d7d0');groundGrid.position.y=-.565;(groundGrid.material as THREE.Material).opacity=.17;(groundGrid.material as THREE.Material).transparent=true;scene.add(groundGrid);
-  const course=new THREE.Mesh(new THREE.BoxGeometry(17,.7,58),track);course.position.set(0,-.2,0);course.receiveShadow=true;course.castShadow=true;scene.add(course);
+  const course=new THREE.Mesh(new THREE.BoxGeometry(17,.7,58),track);course.position.set(0,-.35,0);course.receiveShadow=true;course.castShadow=true;scene.add(course);
   const blockers:{x:number;z:number;w:number;h:number;d:number;mesh:THREE.Mesh}[]=[];
   const box=(x:number,y:number,z:number,w:number,h:number,d:number,material:THREE.Material,collide=false)=>{
    const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);mesh.position.set(x,y,z);mesh.castShadow=true;mesh.receiveShadow=true;scene.add(mesh);
@@ -91,8 +91,7 @@ export default function World3D(){
    const length=Math.hypot(dx,dz);if(length>0){dx=dx/Math.max(1,length/(speed*dt));dz=dz/Math.max(1,length/(speed*dt))}
    const nx=THREE.MathUtils.clamp(player.position.x+dx,-7.25,7.25),nz=THREE.MathUtils.clamp(player.position.z+dz,-27,27);
    const collides=(x:number,z:number)=>blockers.some(b=>player.position.y<b.h-.15&&Math.abs(x-b.x)<b.w/2+.38&&Math.abs(z-b.z)<b.d/2+.32);
-   if(!collides(nx,player.position.z))player.position.x=nx;
-   if(!collides(player.position.x,nz))player.position.z=nz;
+   if(!collides(nx,player.position.z))player.position.x=nx;else if(moving&&nowTime()-lastBumpAt>900){lastBumpAt=nowTime();setHelp('¡Obstáculo! Saltá o buscá un hueco.')}\n   if(!collides(player.position.x,nz))player.position.z=nz;else if(moving&&nowTime()-lastBumpAt>900){lastBumpAt=nowTime();setHelp('¡Obstáculo! Saltá o buscá un hueco.')}
    if(keys.has('jump')&&onGround){velocity.y=8.1;onGround=false;keys.delete('jump')}
    if(!onGround){velocity.y-=19*dt;player.position.y+=velocity.y*dt;if(player.position.y<=0){player.position.y=0;velocity.y=0;onGround=true}}
    if(moving){walkTime+=dt*10;legL.rotation.x=Math.sin(walkTime)*.55;legR.rotation.x=-Math.sin(walkTime)*.55;armL.rotation.x=-Math.sin(walkTime)*.42;armR.rotation.x=Math.sin(walkTime)*.42;player.rotation.y=Math.atan2(dx,-dz)||0;if(nowTime()-lastMoveAt>.25){lastMoveAt=nowTime();moveCounter++;if(moveCounter%4===0)setMoves(moveCounter)}}
