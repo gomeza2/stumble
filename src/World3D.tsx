@@ -17,13 +17,13 @@ export default function World3D({onProgress,onFinish,onCheckpoint,startAtCheckpo
   const host=hostRef.current;if(!host)return;
   let alive=true,raf=0,elapsed=0,last=performance.now(),finished=false,checkpointHit=startAtCheckpoint,invulnerable=0,dashUntil=0,jumpQueued=false,dashQueued=false,steps=0,lastStep=0;
   const held=new Set<Held>();
-  const scene=new THREE.Scene();scene.background=new THREE.Color('#b6d8ff');scene.fog=new THREE.Fog('#b6d8ff',42,145);
-  const camera=new THREE.PerspectiveCamera(58,1,.1,240);
+  const scene=new THREE.Scene();scene.background=new THREE.Color('#b6d8ff');scene.fog=new THREE.Fog('#b6d8ff',75,230);
+  const camera=new THREE.PerspectiveCamera(68,1,.1,320);
   const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false,powerPreference:'high-performance'});
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.7));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.1;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.6));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.08;
   host.appendChild(renderer.domElement);
   scene.add(new THREE.HemisphereLight('#eaf5ff','#5a6987',2.0));
-  const sun=new THREE.DirectionalLight('#fff3d5',3.1);sun.position.set(-12,25,10);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);sun.shadow.camera.left=-28;sun.shadow.camera.right=28;sun.shadow.camera.top=35;sun.shadow.camera.bottom=-35;scene.add(sun);
+  const sun=new THREE.DirectionalLight('#fff3d5',3.1);sun.position.set(-12,25,10);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-28;sun.shadow.camera.right=28;sun.shadow.camera.top=35;sun.shadow.camera.bottom=-35;scene.add(sun);
   const mat=(color:string,roughness=.55,metalness=.02)=>new THREE.MeshStandardMaterial({color,roughness,metalness});
   const floorMat=mat('#f1f4fb'),edgeMat=mat('#3d4b70'),lime=mat('#c5ff6b',.3),pink=mat('#ff5d8f',.35),blue=mat('#4f8dff',.35),purple=mat('#9066ff',.4),orange=mat('#ffae50',.4),white=mat('#ffffff',.4),dark=mat('#27314c');
   const ground=new THREE.Mesh(new THREE.PlaneGeometry(500,500),mat('#92b6d7'));ground.rotation.x=-Math.PI/2;ground.position.y=-2.8;ground.receiveShadow=true;scene.add(ground);
@@ -35,6 +35,9 @@ export default function World3D({onProgress,onFinish,onCheckpoint,startAtCheckpo
   slab(0,4,14,24);slab(0,-17,14,18);slab(0,-37,14,18);slab(0,-51,14,5);slab(0,-64,14,8);slab(0,-79,14,22);
   // Colored sector strips
   for(const z of [ -7,-27,-48,-69,-91 ]){box(course,13.7,.035,.16,lime,0,-.115,z,false)}
+  // Dashed centerline and painted sector edges help read the route at speed.
+  for(let z=17;z>=-91;z-=3.2){if(z<-53&&z>-60)continue;box(course,.10,.025,1.35,white,0,-.112,z,false)}
+  for(const z of [2,-17,-37,-51,-64,-79]){for(const x of [-6.72,6.72])box(course,.12,.035,2.1,z%2?pink:blue,x,-.105,z,false)}
   // Start gate
   for(const x of [-6.2,6.2]){box(course,.38,5,.42,purple,x,2.15,11);sphere(course,.36,lime,x,4.85,11)}
   box(course,12.8,.34,.5,purple,0,4.4,11);
@@ -65,6 +68,7 @@ export default function World3D({onProgress,onFinish,onCheckpoint,startAtCheckpo
   const shadow=new THREE.Mesh(new THREE.CircleGeometry(.72,24),new THREE.MeshBasicMaterial({color:'#1b2442',transparent:true,opacity:.24}));shadow.rotation.x=-Math.PI/2;shadow.position.y=-.1;player.add(shadow);
   const checkpointRing=new THREE.Mesh(new THREE.TorusGeometry(1.25,.13,10,36),lime);checkpointRing.rotation.x=Math.PI/2;checkpointRing.position.set(0,.1,-38);course.add(checkpointRing);
   let checkpointZ=-38,px=0,pz=13,vy=0,onGround=true,airTime=0,playerYaw=0,hitFlash=0,knockX=0;
+  const cameraPosition=new THREE.Vector3(0,4,20),cameraLook=new THREE.Vector3(0,1.5,0);
   const reset=()=>{px=0;pz=checkpointHit?checkpointZ:13;vy=0;onGround=true;airTime=0;finished=false;invulnerable=performance.now()+1200;player.position.set(px,0,pz);setHelp('¡Dale! Saltá, esquivá y buscá los atajos.');onProgress?.(Math.max(0,Math.round((13-pz)/107*100)));};
   const press=(key:Held,down:boolean)=>{if(down&&!held.has(key)){if(key==='jump')jumpQueued=true;if(key==='dash')dashQueued=true}if(down)held.add(key);else held.delete(key)};
   gameRef.current={reset,press};
@@ -93,7 +97,11 @@ export default function World3D({onProgress,onFinish,onCheckpoint,startAtCheckpo
     if(Math.abs(px)>6.05)setHelp('¡Cuidado con el borde! Mantenete sobre la pista.');
     onProgress?.(Math.max(0,Math.min(100,Math.round((13-pz)/111*100))));
    }
-   const camTarget=new THREE.Vector3(px*.35,2.1+player.position.y*.45,pz+9.8);camera.position.lerp(new THREE.Vector3(px*.55,6.8+player.position.y*.35,pz+12.5),1-Math.pow(.001,dt));camera.lookAt(camTarget);
+   // Lower, closer chase camera aimed ahead instead of down at the floor.
+   const desiredCamera=new THREE.Vector3(px*.42,3.55+player.position.y*.24,pz+7.8);
+   const lookAhead=new THREE.Vector3(px*.18,1.55+player.position.y*.35,pz-4.2);
+   cameraPosition.lerp(desiredCamera,1-Math.exp(-dt*5.5));cameraLook.lerp(lookAhead,1-Math.exp(-dt*7));
+   camera.position.copy(cameraPosition);camera.lookAt(cameraLook);
    renderer.render(scene,camera);
   };
   reset();raf=requestAnimationFrame(animate);
