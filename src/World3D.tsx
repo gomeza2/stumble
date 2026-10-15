@@ -2,20 +2,20 @@ import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp } from 'lucide-react';
 
-type Props = { onProgress?: (value:number)=>void; onFinish?: (result:'win'|'fall')=>void; onCheckpoint?:()=>void };
+type Props = { onProgress?: (value:number)=>void; onFinish?: (result:'win'|'fall')=>void; onCheckpoint?:()=>void; startAtCheckpoint?:boolean };
 type Hazard = { group:THREE.Group; kind:'sweeper'|'bumper'|'spinner'; baseX:number; baseZ:number; phase:number; };
 type Held = 'forward'|'back'|'left'|'right'|'jump'|'dash';
 const keyMap:Record<string,Held>={ArrowUp:'forward',w:'forward',W:'forward',ArrowDown:'back',s:'back',S:'back',ArrowLeft:'left',a:'left',A:'left',ArrowRight:'right',d:'right',D:'right',' ':'jump',Space:'jump',Shift:'dash'};
 
-export default function World3D({onProgress,onFinish,onCheckpoint}:Props){
+export default function World3D({onProgress,onFinish,onCheckpoint,startAtCheckpoint=false}:Props){
  const hostRef=useRef<HTMLDivElement>(null);
  const gameRef=useRef<{reset:()=>void;press:(key:Held,down:boolean)=>void}|null>(null);
  const [help,setHelp]=useState('WASD / FLECHAS para moverte · ESPACIO para saltar');
- const [checkpoint,setCheckpoint]=useState(false);
+ const [checkpoint,setCheckpoint]=useState(startAtCheckpoint);
  const [mobile,setMobile]=useState(false);
  useEffect(()=>{
   const host=hostRef.current;if(!host)return;
-  let alive=true,raf=0,elapsed=0,last=performance.now(),finished=false,checkpointHit=false,invulnerable=0,dashUntil=0,jumpQueued=false,dashQueued=false,steps=0,lastStep=0;
+  let alive=true,raf=0,elapsed=0,last=performance.now(),finished=false,checkpointHit=startAtCheckpoint,invulnerable=0,dashUntil=0,jumpQueued=false,dashQueued=false,steps=0,lastStep=0;
   const held=new Set<Held>();
   const scene=new THREE.Scene();scene.background=new THREE.Color('#b6d8ff');scene.fog=new THREE.Fog('#b6d8ff',42,145);
   const camera=new THREE.PerspectiveCamera(58,1,.1,240);
@@ -98,7 +98,7 @@ export default function World3D({onProgress,onFinish,onCheckpoint}:Props){
   };
   reset();raf=requestAnimationFrame(animate);
   return()=>{alive=false;cancelAnimationFrame(raf);ro.disconnect();window.removeEventListener('keydown',onKeyDown);window.removeEventListener('keyup',onKeyUp);renderer.dispose();scene.traverse(o=>{if(o instanceof THREE.Mesh){o.geometry.dispose();const m=o.material;if(Array.isArray(m))m.forEach(x=>x.dispose());else m.dispose()}});if(renderer.domElement.parentNode===host)host.removeChild(renderer.domElement)};
- },[onProgress,onFinish,onCheckpoint]);
+ },[onProgress,onFinish,onCheckpoint,startAtCheckpoint]);
  const hold=(key:Held,down:boolean)=>gameRef.current?.press(key,down);
  return <div className="course-shell"><div className="course-canvas" ref={hostRef}/><div className="course-label"><span className="live-dot"/> CIRCUITO 01 <b>· NUBE DE CAOS</b></div><div className="course-hint">{help}</div><div className="course-checkpoint">{checkpoint?'✓ CHECKPOINT GUARDADO':'META A 100 METROS'}</div><div className="touch-controls"><div className="touch-pad"><button onPointerDown={()=>hold('forward',true)} onPointerUp={()=>hold('forward',false)} onPointerLeave={()=>hold('forward',false)} aria-label="Adelante"><ArrowUp/></button><div><button onPointerDown={()=>hold('left',true)} onPointerUp={()=>hold('left',false)} onPointerLeave={()=>hold('left',false)} aria-label="Izquierda"><ArrowLeft/></button><button onPointerDown={()=>hold('back',true)} onPointerUp={()=>hold('back',false)} onPointerLeave={()=>hold('back',false)} aria-label="Atrás"><ArrowDown/></button><button onPointerDown={()=>hold('right',true)} onPointerUp={()=>hold('right',false)} onPointerLeave={()=>hold('right',false)} aria-label="Derecha"><ArrowRight/></button></div></div><div className="touch-actions"><button className="jump-control" onPointerDown={()=>hold('jump',true)} onPointerUp={()=>hold('jump',false)} onPointerLeave={()=>hold('jump',false)}>SALTAR</button><button className="dash-control" onPointerDown={()=>hold('dash',true)} onPointerUp={()=>hold('dash',false)} onPointerLeave={()=>hold('dash',false)}>DASH ↗</button></div></div><div className="course-keys">WASD / FLECHAS · ESPACIO SALTA · SHIFT DASH</div></div>;
 }
