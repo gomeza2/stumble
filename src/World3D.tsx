@@ -15,7 +15,7 @@ export default function World3D({onProgress,onFinish,onCheckpoint,startAtCheckpo
  const [mobile,setMobile]=useState(false);
  useEffect(()=>{
   const host=hostRef.current;if(!host)return;
-  let alive=true,raf=0,elapsed=0,last=performance.now(),finished=false,checkpointHit=startAtCheckpoint,invulnerable=0,dashUntil=0,jumpQueued=false,dashQueued=false,steps=0,lastStep=0;
+  let alive=true,raf=0,elapsed=0,last=performance.now(),finished=false,checkpointHit=startAtCheckpoint,invulnerable=0,dashUntil=0,dashCooldownUntil=0,jumpQueued=false,dashQueued=false,groundGrace=0,jumpBuffer=0,steps=0,lastStep=0;
   const held=new Set<Held>();
   const scene=new THREE.Scene();scene.background=new THREE.Color('#b6d8ff');scene.fog=new THREE.Fog('#b6d8ff',75,230);
   const camera=new THREE.PerspectiveCamera(68,1,.1,320);
@@ -67,10 +67,10 @@ export default function World3D({onProgress,onFinish,onCheckpoint,startAtCheckpo
   for(const x of [-.27,.27]){const shoe=sphere(player,.24,shoeMat,x,.16,-.12);shoe.scale.set(1,.65,1)}
   const shadow=new THREE.Mesh(new THREE.CircleGeometry(.72,24),new THREE.MeshBasicMaterial({color:'#1b2442',transparent:true,opacity:.24}));shadow.rotation.x=-Math.PI/2;shadow.position.y=-.1;player.add(shadow);
   const checkpointRing=new THREE.Mesh(new THREE.TorusGeometry(1.25,.13,10,36),lime);checkpointRing.rotation.x=Math.PI/2;checkpointRing.position.set(0,.1,-38);course.add(checkpointRing);
-  let checkpointZ=-38,px=0,pz=13,vy=0,onGround=true,airTime=0,playerYaw=0,hitFlash=0,knockX=0;
+  let checkpointZ=-38,px=0,pz=13,velX=0,velZ=0,vy=0,onGround=true,airTime=0,playerYaw=0,hitFlash=0,knockX=0;
   const cameraPosition=new THREE.Vector3(0,4,20),cameraLook=new THREE.Vector3(0,1.5,0);
-  const reset=()=>{px=0;pz=checkpointHit?checkpointZ:13;vy=0;onGround=true;airTime=0;finished=false;invulnerable=performance.now()+1200;player.position.set(px,0,pz);setHelp('¡Dale! Saltá, esquivá y buscá los atajos.');onProgress?.(Math.max(0,Math.round((13-pz)/107*100)));};
-  const press=(key:Held,down:boolean)=>{if(down&&!held.has(key)){if(key==='jump')jumpQueued=true;if(key==='dash')dashQueued=true}if(down)held.add(key);else held.delete(key)};
+  const reset=()=>{px=0;pz=checkpointHit?checkpointZ:13;velX=0;velZ=0;vy=0;onGround=true;airTime=0;groundGrace=.12;jumpBuffer=0;dashUntil=0;dashCooldownUntil=0;jumpQueued=false;dashQueued=false;held.clear();finished=false;invulnerable=performance.now()+1200;player.position.set(px,0,pz);setHelp('¡Dale! Acelerá con WASD · salto con altura variable · dash con enfriamiento.');onProgress?.(Math.max(0,Math.round((13-pz)/107*100)));};
+  const press=(key:Held,down:boolean)=>{if(down&&!held.has(key)){if(key==='jump'){jumpQueued=true;jumpBuffer=.14}if(key==='dash')dashQueued=true}if(down)held.add(key);else held.delete(key)};
   gameRef.current={reset,press};
   const collide=(x:number,z:number)=>{for(const h of hazards){const dx=x-h.group.position.x,dz=z-h.group.position.z;if(h.kind==='sweeper'&&Math.abs(dz)<.95&&Math.abs(dx)<5.5)return h;if(h.kind==='bumper'&&Math.hypot(dx,dz)<1.35)return h;if(h.kind==='spinner'&&Math.abs(dz)<.8&&Math.abs(dx)<.8)return h;}return null};
   const finishRun=(result:'win'|'fall')=>{if(finished)return;finished=true;held.clear();onFinish?.(result);setHelp(result==='win'?'¡META ALCANZADA!':'¡Caíste! Volvé al último checkpoint.');};
@@ -81,10 +81,25 @@ export default function World3D({onProgress,onFinish,onCheckpoint,startAtCheckpo
   const animate=(now:number)=>{if(!alive)return;raf=requestAnimationFrame(animate);const dt=Math.min((now-last)/1000,.035);last=now;elapsed+=dt;
    // Animate hazards independently so the world feels alive even while the player pauses.
    hazards.forEach(h=>{if(h.kind==='sweeper'){h.group.rotation.y=Math.sin(elapsed*1.25+h.phase)*.72;h.group.rotation.y+=dt*1.8;}else if(h.kind==='bumper'){h.group.position.x=Math.sin(elapsed*1.7+h.phase)*4.3;h.group.position.y=.1+Math.abs(Math.sin(elapsed*2.2+h.phase))*.35;}else{h.group.rotation.y=Math.sin(elapsed*1.9+h.phase)*.42;}});
-   if(!finished){const forward=(held.has('forward')?1:0)-(held.has('back')?1:0),side=(held.has('right')?1:0)-(held.has('left')?1:0);const moving=forward!==0||side!==0;const dash=now<dashUntil;if(dashQueued&&now>dashUntil){dashUntil=now+230;dashQueued=false;setHelp('¡IMPULSO! Aprovechá el dash para cruzar huecos.')}const speed=dash?13.8:7.5;let dx=side*speed*dt,dz=-forward*speed*dt;if(moving){const n=Math.hypot(dx,dz);if(n>speed*dt){dx*=speed*dt/n;dz*=speed*dt/n}playerYaw=Math.atan2(dx,-dz);if(now-lastStep>130){steps++;lastStep=now}}
-    const nextX=THREE.MathUtils.clamp(px+dx,-6.15,6.15),nextZ=pz+dz;px=nextX;pz=nextZ;
-    if(jumpQueued&&onGround){vy=held.has('dash')?10.8:9.4;onGround=false;airTime=0;jumpQueued=false;setHelp('¡Buen salto! Podés combinar salto + dash.')}else jumpQueued=false;
-    vy-=22*dt;player.position.y+=vy*dt;if(player.position.y<=0){player.position.y=0;vy=0;onGround=true}else airTime+=dt;
+   if(!finished){
+    const forward=(held.has('forward')?1:0)-(held.has('back')?1:0),side=(held.has('right')?1:0)-(held.has('left')?1:0);
+    const moving=forward!==0||side!==0;
+    // Acceleration, ground friction and gentler air steering make movement feel less robotic.
+    let inputX=side,inputZ=-forward;const inputLen=Math.hypot(inputX,inputZ);if(inputLen>1){inputX/=inputLen;inputZ/=inputLen}
+    const maxSpeed=7.8,accel=onGround?25:9,friction=onGround?19:1.7;
+    const targetX=inputX*maxSpeed,targetZ=inputZ*maxSpeed;
+    if(moving){velX+=(targetX-velX)*Math.min(1,accel*dt);velZ+=(targetZ-velZ)*Math.min(1,accel*dt);playerYaw=Math.atan2(velX,-velZ);if(now-lastStep>130){steps++;lastStep=now}}
+    else{const damp=Math.exp(-friction*dt);velX*=damp;velZ*=damp;if(Math.abs(velX)<.035)velX=0;if(Math.abs(velZ)<.035)velZ=0}
+    if(dashQueued&&now>=dashCooldownUntil){const mag=Math.hypot(velX,velZ);if(mag>.2){velX=velX/mag*14.5;velZ=velZ/mag*14.5}else velZ=-14.5;dashUntil=now+190;dashCooldownUntil=now+1050;dashQueued=false;setHelp('¡DASH! El impulso tiene enfriamiento: guardalo para el momento justo.')}
+    else if(dashQueued&&now<dashCooldownUntil){dashQueued=false;setHelp('DASH RECARGANDO · Seguí moviéndote.')}
+    const dash=now<dashUntil;if(dash){const dashDrag=Math.exp(-1.2*dt);velX*=dashDrag;velZ*=dashDrag}
+    const nextX=THREE.MathUtils.clamp(px+velX*dt,-6.15,6.15),nextZ=pz+velZ*dt;px=nextX;pz=nextZ;
+    if(onGround)groundGrace=.12;else groundGrace=Math.max(0,groundGrace-dt);
+    jumpBuffer=Math.max(0,jumpBuffer-dt);
+    if(jumpQueued&&jumpBuffer>0&&(onGround||groundGrace>0)){vy=held.has('jump')?10.2:8.2;onGround=false;groundGrace=0;jumpBuffer=0;jumpQueued=false;setHelp('¡Salto! Mantené ESPACIO para subir más; soltalo para caer antes.')}
+    if(!held.has('jump')&&vy>0)vy=Math.min(vy,5.2);
+    vy-=24*dt;player.position.y+=vy*dt;
+    if(player.position.y<=0){player.position.y=0;vy=0;onGround=true}else{onGround=false;airTime+=dt;}
     // Rebounds on contact are forgiving but cost a little distance.
     const h=collide(px,pz);if(h&&now>invulnerable){invulnerable=now+800;const sign=px-h.group.position.x;px=THREE.MathUtils.clamp(px+(sign===0?(Math.random()>.5?1:-1):Math.sign(sign))*1.8,-6,6);pz+=.85;vy=Math.max(vy,4.5);player.position.y=Math.max(player.position.y,.25);setHelp('¡PUM! Te empujaron. Usá el impulso para recuperar terreno.')}
     if(pz<-35&&!checkpointHit){checkpointHit=true;checkpointZ=-38;setCheckpoint(true);onCheckpoint?.();setHelp('CHECKPOINT ACTIVADO · Si caés, volvés acá.')}
