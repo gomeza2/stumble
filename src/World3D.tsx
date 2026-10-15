@@ -32,7 +32,7 @@ export default function World3D({onProgress,onFinish,onCheckpoint}:Props){
   const sphere=(parent:THREE.Object3D,r:number,material:THREE.Material,x:number,y:number,z:number)=>{const m=new THREE.Mesh(new THREE.SphereGeometry(r,20,16),material);m.position.set(x,y,z);m.castShadow=true;parent.add(m);return m};
   const slab=(x:number,z:number,w:number,d:number,material:THREE.Material=floorMat)=>{box(course,w,.65,d,material,x,-.45,z);box(course,.22,.38,d+.15,edgeMat,x-w/2-.12,-.27,z,false);box(course,.22,.38,d+.15,edgeMat,x+w/2+.12,-.27,z,false)};
   // A complete, readable obstacle course: 4 themed sectors and 2 safe checkpoints.
-  slab(0,4,14,24);slab(0,-17,14,18);slab(0,-37,14,18);slab(0,-58,14,19);slab(0,-79,14,22);
+  slab(0,4,14,24);slab(0,-17,14,18);slab(0,-37,14,18);slab(0,-51,14,5);slab(0,-64,14,8);slab(0,-79,14,22);
   // Colored sector strips
   for(const z of [ -7,-27,-48,-69,-91 ]){box(course,13.7,.035,.16,lime,0,-.115,z,false)}
   // Start gate
