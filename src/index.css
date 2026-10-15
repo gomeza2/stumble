@@ -68,3 +68,36 @@ button:focus-visible{outline:3px solid #a5ffcb;outline-offset:4px}
 @keyframes result-pop{from{transform:scale(.55) rotate(-12deg);opacity:.4}to{transform:scale(1) rotate(0);opacity:1}}
 .gravity-track.jumping{box-shadow:inset 0 0 30px #b7ff7314,0 0 22px #b7ff7320}
 @media(prefers-reduced-motion:reduce){.arena-fail,.result>span{animation:none!important}}
+
+/* Phase 6 — actual explorable map and faceless player character */
+.maze-game{max-width:560px;gap:10px}
+.maze-status{width:min(100%,450px);display:flex;align-items:center;justify-content:space-between;color:#a8a8bd;font-size:9px;font-weight:900;letter-spacing:1.3px}
+.maze-status>span{display:flex;align-items:center;gap:7px}
+.maze-status b{color:#f5f6ff}.maze-status em{color:#77778e;font-style:normal;font-weight:700}
+.status-dot{width:7px;height:7px;border-radius:50%;background:#b7ff73;box-shadow:0 0 10px #b7ff73}
+.maze-map{width:min(100%,450px);aspect-ratio:1;position:relative;padding:8px;border:1px solid #b7ff7335;border-radius:15px;background:linear-gradient(145deg,#111827,#0a0d17);box-shadow:0 18px 40px #0005,inset 0 0 30px #0008}
+.maze-grid{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));grid-template-rows:repeat(9,minmax(0,1fr));width:100%;height:100%;gap:3px}
+.maze-cell{position:relative;display:grid;place-items:center;min-width:0;min-height:0;border-radius:4px;overflow:hidden}
+.maze-wall{background:linear-gradient(145deg,#414a62,#242b3d 72%);border:1px solid #59627a;box-shadow:inset 0 2px 0 #ffffff13,inset 0 -3px 0 #0004}
+.maze-wall:after{content:"";position:absolute;inset:3px;border-top:1px solid #ffffff0a;border-left:1px solid #ffffff0a;border-radius:2px}
+.maze-floor{background:radial-gradient(circle at 50% 40%,#253044,#141c2b 75%);border:1px solid #ffffff08}
+.maze-floor:nth-child(odd){background-color:#171f2e}
+.maze-player-cell{z-index:2;background:radial-gradient(circle,#b7ff7338,#b7ff7309 72%);border:1px solid #b7ff7388;overflow:visible}
+.runner-person{position:absolute;width:145%;height:145%;bottom:-7%;left:50%;transform:translateX(-50%);z-index:4;filter:drop-shadow(0 0 7px #dbeafe80);animation:runner-idle .65s ease-in-out infinite alternate}
+@keyframes runner-idle{to{translate:0 -2px}}
+.maze-goal-cell{background:radial-gradient(circle,#b7ff7350,#b7ff7310 75%);border:1px solid #b7ff73a0}
+.exit-portal{display:grid;place-items:center;width:70%;height:70%;border:2px solid #b7ff73;border-radius:50%;color:#d9ffad;font-size:clamp(11px,2vw,22px);background:#b7ff7318;box-shadow:0 0 15px #b7ff7370,inset 0 0 10px #b7ff7350;animation:portal-glow 1.4s ease-in-out infinite alternate}
+@keyframes portal-glow{to{box-shadow:0 0 24px #b7ff73a0,inset 0 0 15px #b7ff7360;transform:scale(.92)}}
+.maze-map-label{position:absolute;z-index:5;font-size:8px;font-weight:1000;letter-spacing:1.3px;padding:5px 7px;border-radius:5px;pointer-events:none}
+.start-label{top:9px;left:9px;color:#f8fafc;background:#202a3d}
+.goal-label{right:9px;bottom:9px;color:#b7ff73;background:#1a2b20}
+.bottom-status{padding:7px 0 4px;font-size:8px}
+.bottom-status b{color:#b7ff73;font-size:8px}
+.maze-controls{gap:5px;margin:6px 0 0}
+.maze-controls button{width:45px;height:39px;background:linear-gradient(180deg,#2a3347,#171d2c);border:1px solid #59627a;color:#f5f6ff;box-shadow:0 3px 0 #090d15;touch-action:manipulation}
+.maze-controls button:active{transform:translateY(2px);box-shadow:0 1px 0 #090d15}
+.hero-person{width:78px;height:95px;display:block;margin:0 auto 4px;filter:drop-shadow(0 0 16px #e8efff55);animation:runner-idle .7s ease-in-out infinite alternate}
+.core{display:flex;flex-direction:column;align-items:center;justify-content:center}
+.core small{display:block}
+@media(max-width:620px){.maze-map{padding:5px;border-radius:10px}.maze-grid{gap:2px}.maze-cell{border-radius:2px}.maze-status{font-size:8px}.runner-person{width:155%;height:155%}.maze-controls button{width:42px;height:37px}}
+@media(prefers-reduced-motion:reduce){.runner-person,.hero-person,.exit-portal{animation:none!important}}
