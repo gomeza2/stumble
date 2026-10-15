@@ -91,7 +91,8 @@ export default function World3D(){
    const length=Math.hypot(dx,dz);if(length>0){dx=dx/Math.max(1,length/(speed*dt));dz=dz/Math.max(1,length/(speed*dt))}
    const nx=THREE.MathUtils.clamp(player.position.x+dx,-7.25,7.25),nz=THREE.MathUtils.clamp(player.position.z+dz,-27,27);
    const collides=(x:number,z:number)=>blockers.some(b=>player.position.y<b.h-.15&&Math.abs(x-b.x)<b.w/2+.38&&Math.abs(z-b.z)<b.d/2+.32);
-   if(!collides(nx,player.position.z))player.position.x=nx;else if(moving&&nowTime()-lastBumpAt>900){lastBumpAt=nowTime();setHelp('¡Obstáculo! Saltá o buscá un hueco.')}\n   if(!collides(player.position.x,nz))player.position.z=nz;else if(moving&&nowTime()-lastBumpAt>900){lastBumpAt=nowTime();setHelp('¡Obstáculo! Saltá o buscá un hueco.')}
+   if(!collides(nx,player.position.z))player.position.x=nx;else if(moving&&nowTime()-lastBumpAt>900){lastBumpAt=nowTime();setHelp('¡Obstáculo! Saltá o buscá un hueco.')}
+   if(!collides(player.position.x,nz))player.position.z=nz;else if(moving&&nowTime()-lastBumpAt>900){lastBumpAt=nowTime();setHelp('¡Obstáculo! Saltá o buscá un hueco.')}
    if(keys.has('jump')&&onGround){velocity.y=8.1;onGround=false;keys.delete('jump')}
    if(!onGround){velocity.y-=19*dt;player.position.y+=velocity.y*dt;if(player.position.y<=0){player.position.y=0;velocity.y=0;onGround=true}}
    if(moving){walkTime+=dt*10;legL.rotation.x=Math.sin(walkTime)*.55;legR.rotation.x=-Math.sin(walkTime)*.55;armL.rotation.x=-Math.sin(walkTime)*.42;armR.rotation.x=Math.sin(walkTime)*.42;player.rotation.y=Math.atan2(dx,-dz)||0;if(nowTime()-lastMoveAt>.25){lastMoveAt=nowTime();moveCounter++;if(moveCounter%4===0)setMoves(moveCounter)}}
