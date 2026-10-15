@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, ArrowUpRight, Check, Crown, Gamepad2, Gauge, Medal, Play, RotateCcw, Sparkles, Trophy, Volume2, Zap } from 'lucide-react';
 import World3D from './World3D';
 
@@ -7,6 +7,7 @@ const readNumber=(key:string)=>{try{return Number(localStorage.getItem(key)||0)}
 export default function App(){
  const [screen,setScreen]=useState<'home'|'race'>('home');
  const [progress,setProgress]=useState(0);
+ const progressRef=useRef(0);
  const [result,setResult]=useState<Result>(null);
  const [courseKey,setCourseKey]=useState(0);
  const [best,setBest]=useState(()=>readNumber('nube-best'));
@@ -14,9 +15,9 @@ export default function App(){
  const [checkpoint,setCheckpoint]=useState(false);
  const [muted,setMuted]=useState(false);
  useEffect(()=>{document.title='NUBE DE CAOS — Circuito de obstáculos'},[]);
- const onProgress=useCallback((n:number)=>setProgress(n),[]);
+ const onProgress=useCallback((n:number)=>{progressRef.current=n;setProgress(n)},[]);
  const onCheckpoint=useCallback(()=>setCheckpoint(true),[]);
- const onFinish=useCallback((r:'win'|'fall')=>{setResult(r);if(r==='win'){setWins(v=>{const next=v+1;try{localStorage.setItem('nube-wins',String(next))}catch{}return next});setBest(v=>{const next=Math.max(v,Math.round(1000+progress*12));try{localStorage.setItem('nube-best',String(next))}catch{}return next})}},[progress]);
+ const onFinish=useCallback((r:'win'|'fall')=>{setResult(r);if(r==='win'){setWins(v=>{const next=v+1;try{localStorage.setItem('nube-wins',String(next))}catch{}return next});setBest(v=>{const next=Math.max(v,Math.round(1000+progressRef.current*12));try{localStorage.setItem('nube-best',String(next))}catch{}return next})}},[]);
  const launch=()=>{setResult(null);setProgress(0);setCheckpoint(false);setCourseKey(v=>v+1);setScreen('race')};
  const goHome=()=>{setResult(null);setScreen('home')};
  return <div className="game-app">
