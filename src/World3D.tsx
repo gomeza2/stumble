@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp } from 'lucide-react';
 
 type Props = { onProgress?: (value:number)=>void; onFinish?: (result:'win'|'fall')=>void; onCheckpoint?:()=>void; startAtCheckpoint?:boolean };
-type Hazard = { group:THREE.Group; kind:'sweeper'|'bumper'|'spinner'; baseX:number; baseZ:number; phase:number; };
+type Hazard = { group:THREE.Group; kind:'sweeper'|'bumper'|'spinner'|'gate'|'hammer'; baseX:number; baseZ:number; phase:number; };
 type Held = 'forward'|'back'|'left'|'right'|'jump'|'dash';
 const keyMap:Record<string,Held>={ArrowUp:'forward',w:'forward',W:'forward',ArrowDown:'back',s:'back',S:'back',ArrowLeft:'left',a:'left',A:'left',ArrowRight:'right',d:'right',D:'right',' ':'jump',Space:'jump',Shift:'dash'};
 
@@ -115,6 +115,25 @@ export default function World3D({onProgress,onFinish,onCheckpoint,startAtCheckpo
   // The split bridge: jump across a real gap, with safe side platforms.
   const gap=box(course,5,.12,8,mat('#35405f'),0,-.02,-56);gap.position.y=-1.1;
   for(const side of [-1,1]){box(course,3.2,.35,7,lime,side*5.1,-.05,-56)}
+  // Timed vertical doors: openings rise and fall on a readable cycle.
+  for(let i=0;i<3;i++){
+    const z=-68-i*4.1,x=i===1?2.3:-2.3;
+    const g=new THREE.Group();g.position.set(x,.15,z);course.add(g);
+    box(g,3.6,.3,.72,dark,0,2.2,0);
+    box(g,3.2,2.25,.5,i%2?pink:blue,0,1.05,0);
+    for(let n=-1;n<=1;n++)box(g,.12,1.9,.54,trimMat,n*1.35,1.05,.02,false);
+    hazards.push({group:g,kind:'gate',baseX:x,baseZ:z,phase:i*1.7});
+  }
+  // Side-mounted swinging hammers add a second timing challenge.
+  for(let i=0;i<2;i++){
+    const z=-24-i*13,side=i%2?1:-1;
+    const g=new THREE.Group();g.position.set(side*5.4,2.6,z);course.add(g);
+    box(g,.38,2.4,.38,trimMat,0,-1.1,0);
+    const arm=new THREE.Group();arm.position.y=-2.1;g.add(arm);
+    box(arm,4.8,.42,.55,orange,side*1.8,-.25,0);
+    const head=sphere(arm,.72,pink,side*3.8,-.25,0);head.scale.set(1.25,.8,1);
+    hazards.push({group:g,kind:'hammer',baseX:side*5.4,baseZ:z,phase:i*2.4});
+  }
   // Final lane gates and finish arch
   for(let i=0;i<4;i++){const z=-77-i*2.5;const gate=new THREE.Group();gate.position.set(i%2===0?-2.7:2.7,.55,z);course.add(gate);box(gate,.3,2.5,.45,i%2===0?pink:blue,0,1.15,0);sphere(gate,.36,lime,0,2.5,0);hazards.push({group:gate,kind:'spinner',baseX:gate.position.x,baseZ:z,phase:i});}
   const finish=new THREE.Group();finish.position.set(0,0,-94);course.add(finish);for(const x of [-5.5,5.5])box(finish,.5,6,.6,lime,x,2.7,0);box(finish,11.5,.45,.65,purple,0,5.6,0);for(let i=0;i<7;i++){const flag=box(finish,1.5,.16,.1,i%2?pink:blue,-4.5+i*1.5,4.9,0);flag.rotation.z=(i%2?.15:-.15)}
@@ -134,7 +153,7 @@ export default function World3D({onProgress,onFinish,onCheckpoint,startAtCheckpo
   const reset=()=>{px=0;pz=checkpointHit?checkpointZ:13;velX=0;velZ=0;vy=0;onGround=true;airTime=0;groundGrace=.12;jumpBuffer=0;dashUntil=0;dashCooldownUntil=0;jumpQueued=false;dashQueued=false;held.clear();finished=false;invulnerable=performance.now()+1200;player.position.set(px,0,pz);setHelp('¡Dale! Acelerá con WASD · salto con altura variable · dash con enfriamiento.');onProgress?.(Math.max(0,Math.round((13-pz)/107*100)));};
   const press=(key:Held,down:boolean)=>{if(down&&!held.has(key)){if(key==='jump'){jumpQueued=true;jumpBuffer=.14}if(key==='dash')dashQueued=true}if(down)held.add(key);else held.delete(key)};
   gameRef.current={reset,press};
-  const collide=(x:number,z:number)=>{for(const h of hazards){const dx=x-h.group.position.x,dz=z-h.group.position.z;if(h.kind==='sweeper'&&Math.abs(dz)<.95&&Math.abs(dx)<5.5)return h;if(h.kind==='bumper'&&Math.hypot(dx,dz)<1.35)return h;if(h.kind==='spinner'&&Math.abs(dz)<.8&&Math.abs(dx)<.8)return h;}return null};
+  const collide=(x:number,z:number)=>{for(const h of hazards){const dx=x-h.group.position.x,dz=z-h.group.position.z;if(h.kind==='sweeper'&&Math.abs(dz)<.95&&Math.abs(dx)<5.5)return h;if(h.kind==='bumper'&&Math.hypot(dx,dz)<1.35)return h;if(h.kind==='spinner'&&Math.abs(dz)<.8&&Math.abs(dx)<.8)return h;if(h.kind==='gate'&&Math.abs(dz)<.7&&Math.abs(dx)<1.95&&h.group.position.y<1.55)return h;if(h.kind==='hammer'&&Math.abs(dz)<1.15&&Math.abs(dx)<4.4&&Math.abs(Math.sin(elapsed*2.1+h.phase))>.38)return h;}return null};
   const finishRun=(result:'win'|'fall')=>{if(finished)return;finished=true;held.clear();onFinish?.(result);setHelp(result==='win'?'¡META ALCANZADA!':'¡Caíste! Volvé al último checkpoint.');};
   const resize=()=>{const w=Math.max(1,host.clientWidth),h=Math.max(1,host.clientHeight);camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h,false)};const ro=new ResizeObserver(resize);ro.observe(host);resize();
   const onKeyDown=(e:KeyboardEvent)=>{const k=keyMap[e.key]||keyMap[e.code];if(!k)return;if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key))e.preventDefault();press(k,true)};
@@ -142,7 +161,7 @@ export default function World3D({onProgress,onFinish,onCheckpoint,startAtCheckpo
   window.addEventListener('keydown',onKeyDown);window.addEventListener('keyup',onKeyUp);
   const animate=(now:number)=>{if(!alive)return;raf=requestAnimationFrame(animate);const dt=Math.min((now-last)/1000,.035);last=now;elapsed+=dt;
    // Animate hazards independently so the world feels alive even while the player pauses.
-   hazards.forEach(h=>{if(h.kind==='sweeper'){h.group.rotation.y=Math.sin(elapsed*1.25+h.phase)*.72;h.group.rotation.y+=dt*1.8;}else if(h.kind==='bumper'){h.group.position.x=Math.sin(elapsed*1.7+h.phase)*4.3;h.group.position.y=.1+Math.abs(Math.sin(elapsed*2.2+h.phase))*.35;}else{h.group.rotation.y=Math.sin(elapsed*1.9+h.phase)*.42;}});
+   hazards.forEach(h=>{if(h.kind==='sweeper'){h.group.rotation.y=Math.sin(elapsed*1.25+h.phase)*.72;h.group.rotation.y+=dt*1.8;}else if(h.kind==='bumper'){h.group.position.x=Math.sin(elapsed*1.7+h.phase)*4.3;h.group.position.y=.1+Math.abs(Math.sin(elapsed*2.2+h.phase))*.35;}else if(h.kind==='gate'){const open=Math.max(0,Math.sin(elapsed*1.45+h.phase));h.group.position.y=.15+open*2.5;}else if(h.kind==='hammer'){h.group.rotation.z=Math.sin(elapsed*2.1+h.phase)*.72;}else{h.group.rotation.y=Math.sin(elapsed*1.9+h.phase)*.42;}});
    if(!finished){
     const forward=(held.has('forward')?1:0)-(held.has('back')?1:0),side=(held.has('right')?1:0)-(held.has('left')?1:0);
     const moving=forward!==0||side!==0;
@@ -162,6 +181,16 @@ export default function World3D({onProgress,onFinish,onCheckpoint,startAtCheckpo
     if(!held.has('jump')&&vy>0)vy=Math.min(vy,5.2);
     vy-=24*dt;player.position.y+=vy*dt;
     if(player.position.y<=0){player.position.y=0;vy=0;onGround=true}else{onGround=false;airTime+=dt;}
+    // Landing on a spring pad launches the player with a strong, readable bounce.
+    if(onGround){
+      for(const pad of springPads){
+        if(Math.abs(px-pad.position.x)<.72&&Math.abs(pz-pad.position.z)<1.05){
+          vy=13.5;onGround=false;player.position.y=.06;
+          setHelp('¡REBOTE! Las plataformas verdes te lanzan más alto.');
+          break;
+        }
+      }
+    }
     // Rebounds on contact are forgiving but cost a little distance.
     const h=collide(px,pz);if(h&&now>invulnerable){invulnerable=now+800;const sign=px-h.group.position.x;px=THREE.MathUtils.clamp(px+(sign===0?(Math.random()>.5?1:-1):Math.sign(sign))*1.8,-6,6);pz+=.85;vy=Math.max(vy,4.5);player.position.y=Math.max(player.position.y,.25);setHelp('¡PUM! Te empujaron. Usá el impulso para recuperar terreno.')}
     if(pz<-35&&!checkpointHit){checkpointHit=true;checkpointZ=-38;setCheckpoint(true);onCheckpoint?.();setHelp('CHECKPOINT ACTIVADO · Si caés, volvés acá.')}
