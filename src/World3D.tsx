@@ -110,8 +110,45 @@ export default function World3D({onProgress,onFinish,onCheckpoint,startAtCheckpo
   const makeSweeper=(z:number,phase:number)=>{const g=new THREE.Group();g.position.set(0,.48,z);course.add(g);const hub=sphere(g,.72,orange,0,0,0);hub.scale.set(1,.55,1);box(g,11,.34,.6,pink,0,.05,0);for(const x of [-4.6,-2.3,2.3,4.6])sphere(g,.4,white,x,.1,0);hazards.push({group:g,kind:'sweeper',baseX:0,baseZ:z,phase});};
   makeSweeper(-12,0);makeSweeper(-32,1.3);makeSweeper(-63,2.1);
   for(const [z,phase] of [[-21,0],[-43,1.5],[-73,2.8]] as number[][]){const g=new THREE.Group();g.position.set(0,.1,z);course.add(g);const ball=sphere(g,1.1,blue,0,1.15,0);ball.material=blue;const ring=new THREE.Mesh(new THREE.TorusGeometry(1.45,.14,8,32),lime);ring.position.y=1.15;ring.rotation.x=Math.PI/2;g.add(ring);hazards.push({group:g,kind:'bumper',baseX:0,baseZ:z,phase});}
-  // A row of springy stepping pads that can throw the player off line.
-  for(let i=0;i<5;i++){const x=-4+i*2;const p=box(course,1.35,.42,2.2,i%2?purple:blue,x,.12,-49);p.userData.baseY=.12;p.userData.phase=i*.8;}
+  // Spring pads are tracked as gameplay objects, not just decorative meshes.
+  const springPads:THREE.Mesh[]=[];
+  for(let i=0;i<5;i++){const x=-4+i*2;const p=box(course,1.35,.42,2.2,i%2?purple:blue,x,.12,-49);p.userData.baseY=.12;p.userData.phase=i*.8;springPads.push(p);}
+
+  // PHASE 5 — a course with readable sectors, route choices and landmarks.
+  // A low tunnel gives a visual change of pace while keeping the running lane clear.
+  const tunnelMat=mat('#5c6d91',.38,.25),tunnelGlow=new THREE.MeshBasicMaterial({color:'#9ef7ff'});
+  for(const z of [-18.2,-22.2]){
+    box(course,.55,4.4,.65,tunnelMat,-5.85,1.85,z);
+    box(course,.55,4.4,.65,tunnelMat,5.85,1.85,z);
+    box(course,12.2,.55,.65,tunnelMat,0,4.05,z);
+    box(course,10.8,.07,.08,tunnelGlow,0,3.72,z,false);
+  }
+  // Split-lane signs: the center is shorter but dangerous; the side route is longer and safer.
+  const routeSign=(x:number,z:number,labelColor:THREE.Material,reverse=false)=>{
+    const g=new THREE.Group();g.position.set(x,0,z);course.add(g);
+    box(g,.16,2.4,.18,trimMat,0,1.15,0,false);
+    box(g,2.1,.8,.18,labelColor,reverse?-.9:.9,2.05,0,false);
+    box(g,1.5,.08,.22,goldMat,reverse?-.9:.9,2.05,-.12,false);
+    return g;
+  };
+  routeSign(-5.9,-34,pink);routeSign(5.9,-34,lime,true);
+  // Side connectors guide players towards the safer outer bridge lanes around the broken center.
+  for(const side of [-1,1]){
+    for(const z of [-51.8,-60.2]){
+      box(course,3.25,.22,2.4,trimMat,side*5.05,-.06,z,false);
+      box(course,2.85,.08,.12,side<0?pink:lime,side*5.05,.095,z,false);
+    }
+    // A striped approach ramp is visual language; the collision plane remains level for fair controls.
+    const ramp=box(course,2.9,.12,3.8,side<0?blue:purple,side*5.05,.02,-50.1,false);
+    ramp.rotation.x=-.08;
+  }
+  // A broad recovery deck after the gap and a second checkpoint make long runs less punishing.
+  box(course,12.8,.18,1.15,trimMat,0,-.12,-65.2,false);
+  for(let i=0;i<8;i++)box(course,1.25,.025,.12,i%2?pink:goldMat,-4.4+i*1.25,-.015,-65.2,false);
+  const secondCheckpoint=new THREE.Mesh(new THREE.TorusGeometry(1.1,.12,10,32),blue);
+  secondCheckpoint.rotation.x=Math.PI/2;secondCheckpoint.position.set(0,.12,-65.1);course.add(secondCheckpoint);
+  const checkpointLabel=box(course,3.4,.18,.18,lime,0,2.7,-65.1,false);
+  checkpointLabel.rotation.z=0;
   // The split bridge: jump across a real gap, with safe side platforms.
   const gap=box(course,5,.12,8,mat('#35405f'),0,-.02,-56);gap.position.y=-1.1;
   for(const side of [-1,1]){box(course,3.2,.35,7,lime,side*5.1,-.05,-56)}
@@ -193,7 +230,8 @@ export default function World3D({onProgress,onFinish,onCheckpoint,startAtCheckpo
     }
     // Rebounds on contact are forgiving but cost a little distance.
     const h=collide(px,pz);if(h&&now>invulnerable){invulnerable=now+800;const sign=px-h.group.position.x;px=THREE.MathUtils.clamp(px+(sign===0?(Math.random()>.5?1:-1):Math.sign(sign))*1.8,-6,6);pz+=.85;vy=Math.max(vy,4.5);player.position.y=Math.max(player.position.y,.25);setHelp('¡PUM! Te empujaron. Usá el impulso para recuperar terreno.')}
-    if(pz<-35&&!checkpointHit){checkpointHit=true;checkpointZ=-38;setCheckpoint(true);onCheckpoint?.();setHelp('CHECKPOINT ACTIVADO · Si caés, volvés acá.')}
+    if(pz<-35&&!checkpointHit){checkpointHit=true;checkpointZ=-38;setCheckpoint(true);onCheckpoint?.();setHelp('CHECKPOINT 1 ACTIVADO · Si caés, volvés acá.')}
+    if(pz<-65&&checkpointZ>-60){checkpointZ=-64;setCheckpoint(true);onCheckpoint?.();setHelp('CHECKPOINT 2 ACTIVADO · Ya superaste el puente roto.')}
     // Gaps are risky; a jump or dash carries the player over the broken bridge.
     if(pz<-53&&pz>-60&&Math.abs(px)<3.15&&player.position.y<.25){finishRun('fall')}
     if(pz<-98){finishRun('win')}
