@@ -38,6 +38,68 @@ export default function World3D({onProgress,onFinish,onCheckpoint,startAtCheckpo
   // Dashed centerline and painted sector edges help read the route at speed.
   for(let z=17;z>=-91;z-=3.2){if(z<-53&&z>-60)continue;box(course,.10,.025,1.35,white,0,-.112,z,false)}
   for(const z of [2,-17,-37,-51,-64,-79]){for(const x of [-6.72,6.72])box(course,.12,.035,2.1,z%2?pink:blue,x,-.105,z,false)}
+  // Phase 3: layered track construction, structural supports, trim and distant arena architecture.
+  const trimMat=mat('#dce7f7',.3,.28),underMat=mat('#657796',.68,.12),glowMat=new THREE.MeshBasicMaterial({color:'#baff70'}),goldMat=mat('#ffc56f',.32,.32);
+  // Reinforced undersides make each platform read as a solid, engineered structure.
+  const platformDefs:[[number,number,number,number]]|any=[[0,4,14,24],[0,-17,14,18],[0,-37,14,18],[0,-51,14,5],[0,-64,14,8],[0,-79,14,22]];
+  platformDefs.forEach(([x,z,w,d]:number[])=>{
+    box(course,w+.28,.16,d+.24,trimMat,x,-.81,z,false);
+    box(course,w-.8,.12,d-.7,underMat,x,-.94,z,false);
+    for(const side of [-1,1]){
+      box(course,.16,.58,.18,trimMat,x+side*(w/2-.55),-1.13,z,false);
+      for(let p=-d/2+1.1;p<d/2;p+=3.4)box(course,.14,.22,.14,goldMat,x+side*(w/2-.5),-1.2,z+p,false);
+    }
+  });
+  // Repeating side pylons and illuminated guide strips frame the route without obscuring hazards.
+  for(let i=0;i<13;i++){
+    const z=8-i*7.7;
+    if(z<-53&&z>-60)continue;
+    for(const side of [-1,1]){
+      const x=side*8.8;
+      box(scene,.42,3.5,.42,underMat,x,-.15,z,false);
+      box(scene,.56,.22,.56,trimMat,x,1.65,z,false);
+      box(scene,.18,1.15,.18,i%2?pink:blue,x,2.25,z,false);
+      box(scene,.65,.12,.65,goldMat,x,3.02,z,false);
+    }
+  }
+  // Thin luminous rails and raised edge plates improve depth perception at speed.
+  for(let z=14;z>=-94;z-=2.6){
+    if(z<-53&&z>-60)continue;
+    for(const side of [-1,1]){
+      box(course,.075,.055,1.5,glowMat,side*6.82,-.075,z,false);
+    }
+  }
+  // Large suspended hoops create a recognizable arena skyline and scale behind the course.
+  for(let i=0;i<5;i++){
+    const hoop=new THREE.Mesh(new THREE.TorusGeometry(5.2,.22,10,56),i%2?blue:pink);
+    hoop.position.set((i%2?1:-1)*(12+i*2),7+(i%2)*2,-8-i*19);
+    hoop.rotation.y=(i%2?-.2:.2);hoop.rotation.x=.12;
+    scene.add(hoop);
+    const core=new THREE.Mesh(new THREE.TorusGeometry(4.65,.055,6,56),trimMat);
+    core.position.copy(hoop.position);core.rotation.copy(hoop.rotation);scene.add(core);
+  }
+  // Floating cloud clusters and colored crystal fins give the far background depth.
+  for(let i=0;i<26;i++){
+    const side=i%2?1:-1,z=15-(i*8.4),x=side*(18+(i%4)*5),y=-.2+(i%5)*1.25;
+    const cloud=new THREE.Group();cloud.position.set(x,y,z);scene.add(cloud);
+    sphere(cloud,1.7,white,0,0,0);
+    sphere(cloud,1.2,white,side*1.25,.12,-.25);
+    sphere(cloud,1.05,white,-side*.95,.18,.28);
+    if(i%3===0){
+      const crystal=new THREE.Mesh(new THREE.OctahedronGeometry(1.05),i%2?purple:blue);
+      crystal.position.set(side*1.8,-1.1,-.4);crystal.scale.set(.8,1.8,.8);crystal.castShadow=true;cloud.add(crystal);
+    }
+  }
+  // Short deck plates, bolts and warning stripes add scale to the bridge and finish zone.
+  for(const z of [-54.2,-55.5,-57,-58.5]){
+    for(const side of [-1,1]){
+      box(course,2.8,.07,.12,side<0?pink:blue,side*5.1,.145,z,false);
+    }
+  }
+  for(let i=0;i<11;i++){
+    const z=-84+i*1.35;
+    box(course,12.6,.035,.075,i%2?pink:goldMat,0,-.095,z,false);
+  }
   // Start gate
   for(const x of [-6.2,6.2]){box(course,.38,5,.42,purple,x,2.15,11);sphere(course,.36,lime,x,4.85,11)}
   box(course,12.8,.34,.5,purple,0,4.4,11);
