@@ -180,12 +180,12 @@ export default function World3D({onProgress,onFinish,onCheckpoint,startAtCheckpo
   const torso=new THREE.Mesh(new THREE.CapsuleGeometry(.53,.8,5,10),bodyMat);torso.position.y=1.13;torso.castShadow=true;player.add(torso);
   const head=sphere(player,.46,bodyMat,0,2.03,0);
   const visor=new THREE.Mesh(new THREE.SphereGeometry(.31,18,12,0,Math.PI*2,0,Math.PI*.55),visorMat);visor.position.set(0,2.12,-.32);visor.scale.set(1,.65,.32);player.add(visor);
-  for(const x of [-.58,.58]){const arm=new THREE.Mesh(new THREE.CapsuleGeometry(.16,.54,4,8),bodyMat);arm.position.set(x,1.2,0);arm.rotation.z=x<0?-.18:.18;player.add(arm);const glove=sphere(player,.2,white,x,.88,-.02);glove.scale.set(1,.85,1)}
+  const arms:THREE.Mesh[]=[];\n  for(const x of [-.58,.58]){const arm=new THREE.Mesh(new THREE.CapsuleGeometry(.16,.54,4,8),bodyMat);arm.position.set(x,1.2,0);arm.rotation.z=x<0?-.18:.18;player.add(arm);arms.push(arm);const glove=sphere(player,.2,white,x,.88,-.02);glove.scale.set(1,.85,1)}
   const legL=new THREE.Mesh(new THREE.CapsuleGeometry(.19,.48,4,8),purple);legL.position.set(-.25,.43,0);player.add(legL);const legR=new THREE.Mesh(new THREE.CapsuleGeometry(.19,.48,4,8),purple);legR.position.set(.25,.43,0);player.add(legR);
   for(const x of [-.27,.27]){const shoe=sphere(player,.24,shoeMat,x,.16,-.12);shoe.scale.set(1,.65,1)}
   const shadow=new THREE.Mesh(new THREE.CircleGeometry(.72,24),new THREE.MeshBasicMaterial({color:'#1b2442',transparent:true,opacity:.24}));shadow.rotation.x=-Math.PI/2;shadow.position.y=-.1;player.add(shadow);
   const checkpointRing=new THREE.Mesh(new THREE.TorusGeometry(1.25,.13,10,36),lime);checkpointRing.rotation.x=Math.PI/2;checkpointRing.position.set(0,.1,-38);course.add(checkpointRing);
-  let checkpointZ=-38,px=0,pz=13,velX=0,velZ=0,vy=0,onGround=true,airTime=0,playerYaw=0,hitFlash=0,knockX=0;
+  let checkpointZ=-38,px=0,pz=13,velX=0,velZ=0,vy=0,onGround=true,wasGrounded=true,airTime=0,playerYaw=0,hitFlash=0,knockX=0,landingPulse=0,hitLean=0;
   const cameraPosition=new THREE.Vector3(0,4,20),cameraLook=new THREE.Vector3(0,1.5,0);
   const reset=()=>{px=0;pz=checkpointHit?checkpointZ:13;velX=0;velZ=0;vy=0;onGround=true;airTime=0;groundGrace=.12;jumpBuffer=0;dashUntil=0;dashCooldownUntil=0;jumpQueued=false;dashQueued=false;held.clear();finished=false;invulnerable=performance.now()+1200;player.position.set(px,0,pz);setHelp('¡Dale! Acelerá con WASD · salto con altura variable · dash con enfriamiento.');onProgress?.(Math.max(0,Math.round((13-pz)/107*100)));};
   const press=(key:Held,down:boolean)=>{if(down&&!held.has(key)){if(key==='jump'){jumpQueued=true;jumpBuffer=.14}if(key==='dash')dashQueued=true}if(down)held.add(key);else held.delete(key)};
@@ -217,7 +217,7 @@ export default function World3D({onProgress,onFinish,onCheckpoint,startAtCheckpo
     if(jumpQueued&&jumpBuffer>0&&(onGround||groundGrace>0)){vy=held.has('jump')?10.2:8.2;onGround=false;groundGrace=0;jumpBuffer=0;jumpQueued=false;setHelp('¡Salto! Mantené ESPACIO para subir más; soltalo para caer antes.')}
     if(!held.has('jump')&&vy>0)vy=Math.min(vy,5.2);
     vy-=24*dt;player.position.y+=vy*dt;
-    if(player.position.y<=0){player.position.y=0;vy=0;onGround=true}else{onGround=false;airTime+=dt;}
+    if(player.position.y<=0){\n      if(!wasGrounded&&vy<-4){landingPulse=Math.min(1,Math.abs(vy)/14);setHelp('¡Aterrizaje! Seguí avanzando para no perder ritmo.')}\n      player.position.y=0;vy=0;onGround=true;airTime=0;\n    }else{onGround=false;airTime+=dt}\n    wasGrounded=onGround;\n    landingPulse=Math.max(0,landingPulse-dt*3.4);hitLean=Math.max(0,hitLean-dt*2.5);
     // Landing on a spring pad launches the player with a strong, readable bounce.
     if(onGround){
       for(const pad of springPads){
@@ -229,7 +229,7 @@ export default function World3D({onProgress,onFinish,onCheckpoint,startAtCheckpo
       }
     }
     // Rebounds on contact are forgiving but cost a little distance.
-    const h=collide(px,pz);if(h&&now>invulnerable){invulnerable=now+800;const sign=px-h.group.position.x;px=THREE.MathUtils.clamp(px+(sign===0?(Math.random()>.5?1:-1):Math.sign(sign))*1.8,-6,6);pz+=.85;vy=Math.max(vy,4.5);player.position.y=Math.max(player.position.y,.25);setHelp('¡PUM! Te empujaron. Usá el impulso para recuperar terreno.')}
+    const h=collide(px,pz);if(h&&now>invulnerable){invulnerable=now+800;hitLean=1;const sign=px-h.group.position.x;px=THREE.MathUtils.clamp(px+(sign===0?(Math.random()>.5?1:-1):Math.sign(sign))*1.8,-6,6);pz+=.85;vy=Math.max(vy,4.5);player.position.y=Math.max(player.position.y,.25);setHelp('¡PUM! Te empujaron. Usá el impulso para recuperar terreno.')}
     if(pz<-35&&!checkpointHit){checkpointHit=true;checkpointZ=-38;setCheckpoint(true);onCheckpoint?.();setHelp('CHECKPOINT 1 ACTIVADO · Si caés, volvés acá.')}
     if(pz<-65&&checkpointZ>-60){checkpointZ=-64;setCheckpoint(true);onCheckpoint?.();setHelp('CHECKPOINT 2 ACTIVADO · Ya superaste el puente roto.')}
     // Gaps are risky; a jump or dash carries the player over the broken bridge.
@@ -237,7 +237,7 @@ export default function World3D({onProgress,onFinish,onCheckpoint,startAtCheckpo
     if(pz<-98){finishRun('win')}
     if(player.position.y < -4 || Math.abs(px)>7.8 || pz>19){finishRun('fall')}
     if(now>invulnerable){const hit=collide(px,pz);if(hitFlash>0)hitFlash-=dt}
-    player.position.x=px;player.position.z=pz;player.rotation.y=playerYaw;torso.rotation.z=side*.08;head.rotation.y=Math.sin(elapsed*3)*.04;legL.rotation.x=moving?Math.sin(elapsed*13)*.65:0;legR.rotation.x=moving?-Math.sin(elapsed*13)*.65:0;shadow.scale.setScalar(1-Math.min(player.position.y*.1,.4));shadow.material.opacity=.24-Math.min(player.position.y*.025,.16);
+    player.position.x=px;player.position.z=pz;player.rotation.y=playerYaw;\n    const runCycle=moving?Math.sin(elapsed*(dash?19:13)):0;\n    torso.rotation.z=THREE.MathUtils.clamp(side*.08-hitLean*.2,-.28,.28);torso.rotation.x=onGround?landingPulse*.16:(dash?-.18:.06);\n    head.rotation.y=Math.sin(elapsed*3)*.04;head.rotation.x=onGround?0:-Math.min(.18,Math.abs(vy)*.012);\n    legL.rotation.x=runCycle*.65;legR.rotation.x=-runCycle*.65;\n    arms[0].rotation.x=-runCycle*.52-(dash?.55:0);arms[1].rotation.x=runCycle*.52-(dash?.55:0);\n    arms[0].rotation.z=-.18-hitLean*.35;arms[1].rotation.z=.18+hitLean*.35;\n    player.scale.y=1+landingPulse*.12;player.scale.x=1-landingPulse*.045;player.scale.z=1-landingPulse*.045;\n    shadow.scale.setScalar((1-Math.min(player.position.y*.1,.4))*(1+landingPulse*.25));shadow.material.opacity=.24-Math.min(player.position.y*.025,.16);
     if(Math.abs(px)>6.05)setHelp('¡Cuidado con el borde! Mantenete sobre la pista.');
     onProgress?.(Math.max(0,Math.min(100,Math.round((13-pz)/111*100))));
    }
